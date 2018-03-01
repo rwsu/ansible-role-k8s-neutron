@@ -1,0 +1,38 @@
+coe_config_file:
+coe_config_context:
+coe_host:
+action: provision
+namespace: openstack
+
+clouds_config: 'clouds-secret'
+
+service_name: neutron
+neutron_port: 9696
+neutron_hostname: "{{service_name}}"
+neutron_address: "{{neutron_hostname}}"
+neutron_use_service_ip: true
+
+# Example of custom configuration for a specific project.
+# Use this to override any default configs and/or hieradata
+neutron_config:
+  database:
+    connection: "mysql+pymysql://root:weakpassword@mariadb:3306/glance"
+
+# NOTE(flaper87): Auth section for config file
+  keystone_authtoken:
+    auth_uri: 'http://keystone:35357'
+    auth_url: 'http://keystone:5000/v3'
+    password: weakpassword
+    username: 'neutron'
+    project: 'admin'
+
+# NOTE(flaper87): Uncomment if the service needs to register an endpoint in
+# keystone. Set the right endpoints and username.
+  keystone_default_domain: 'default'
+  keystone_region: 'regionOne'
+  keystone_project: 'admin'
+#  keystone_public_url: 'http://neutron:9292'
+#  keystone_internal_url: 'http://neutron:9292'
+#  keystone_admin_url: 'http://neutron:9292'
+  keystone_user_password: 'weakpassword'
+  keystone_username: 'neutron'

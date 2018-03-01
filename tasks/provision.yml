@@ -1,0 +1,158 @@
+
+# NOTE(flaper87): If any extra config files are required, it's possibled to
+# "upload" them at this point. These files will be copied in the `/tmp` of the
+# server (or container) where this role is running.
+#- name: Upload config files
+#  template:
+#    src: "{{item}}"
+#    dest: /tmp/{{item}}
+#    backup: yes
+#    mode: 0644
+#  with_items:
+#    - httpd.conf
+#    - httpd-glance-main.conf
+
+- include: hiera.yml
+
+
+- name: Generate config files
+  config_template:
+    src: base.conf.j2
+    dest: /tmp/neutron.conf
+    config_overrides: '{{neutron_config}}'
+    config_type: ini
+
+# NOTE(flaper87): If external config fines were generated, copy them into memory
+# following the example below. The registered variable will be used to create
+# the config map.
+- name: Read configs into memory
+  slurp:
+    src: "/tmp/neutron.conf"
+  register: "neutron_conf"
+
+- name: Create neutron-server configmaps
+  ignore_errors: yes
+  k8s_v1_config_map:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: neutron-server
+    namespace: "{{namespace}}"
+    state: present
+    debug: yes
+    labels:
+      service: neutron-server
+    data:
+      config.json: |
+        {
+            # TODO: Specify the command to use to run the service.
+            "command": "/usr/bin/neutron-server --config-file /usr/share/neutron/neutron-dist.conf --config-dir /usr/share/neutron/server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugin.ini --config-dir /etc/neutron/conf.d/common --config-dir /etc/neutron/conf.d/neutron-server",
+            "config_files": [
+              {
+                "dest": "/etc/neutron/neutron.conf",
+                "owner": "neutron",
+                "perm": "0644",
+                "source": "/var/lib/kolla/config_files/neutron.conf"
+              },
+              {
+                "dest": "/etc/neutron/plugin.ini",
+                "owner": "neutron",
+                "perm": "0644",
+                "source": "/var/lib/kolla/config_files/plugin.ini"
+              }
+            ]
+        }
+      neutron.conf: |
+        {{neutron_conf['content'] | b64decode}}
+      plugin.ini: |
+        {{plugin_ini['content'] | b64decode}}
+
+- name: Create neutron database
+  include_role:
+    name: ansible-role-k8s-tripleo
+    tasks_from: create-database
+  vars:
+    service_name: 'neutron'
+    database_name: 'neutron'
+
+# NOTE(flaper87): Here you'll create jobs for db-sync, service bootstrap. Create
+# deployments for the various services, a kubernetes service if an API is being
+# exposed, etc.
+
+- name: Create neutron db-sync job
+  k8s_v1_job:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: neutron-db-sync
+    namespace: "{{namespace}}"
+    state: present
+    restart_policy: OnFailure
+    containers:
+      - image: tripleoupstream/centos-binary-neutron-server
+        name: neutron-db-sync
+        env:
+          - name: KOLLA_CONFIG_STRATEGY
+            value: COPY_ALWAYS
+          - name: KOLLA_BOOTSTRAP
+            value: ''
+        volume_mounts:
+        - name: kolla-config
+          mountPath: /var/lib/kolla/config_files/
+    volumes:
+      - name: kolla-config
+        config_map:
+          name: neutron-server
+    state: present
+
+- name: Create neutron-server service
+  k8s_v1_service:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: "{{neutron_hostname}}"
+    namespace: "{{namespace}}"
+    state: present
+    ports:
+      - port: 9696
+        name: neutron-server
+    selector:
+      app: neutron-server
+  register: neutron-server_service
+
+- name: Create neutron-server deployment
+  k8s_apps_v1beta1_deployment:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: neutron-server
+    namespace: "{{namespace}}"
+    replicas: 1
+    spec_revision_history_limit: 3
+    spec_template_metadata_labels:
+      app: neutron-server
+    containers:
+      - name: neutron-server
+        image: tripleoupstream/centos-binary-neutron-server
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KOLLA_CONFIG_STRATEGY
+          value: COPY_ALWAYS
+        - name: KOLLA_KUBERNETES
+          value: ""
+        ports:
+          - name: neutron-server
+            containerPort: 9696
+        volume_mounts:
+        - name: kolla-config
+          mountPath: /var/lib/kolla/config_files/
+    volumes:
+      - name: kolla-config
+        config_map:
+          name: neutron-server
+    state: present
+
+
+# NOTE(flaper87): we should do this iff the keystone-secret exists and keystone
+# is enabled. Add checks for each.
+- include: keystone.yml
