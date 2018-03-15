@@ -16,7 +16,7 @@ neutron_use_service_ip: true
 # Use this to override any default configs and/or hieradata
 neutron_config:
   database:
-    connection: "mysql+pymysql://root:weakpassword@mariadb:3306/glance"
+    connection: "mysql+pymysql://root:weakpassword@mariadb:3306/neutron"
 
 # NOTE(flaper87): Auth section for config file
   keystone_authtoken:
@@ -36,3 +36,4 @@ neutron_config:
 #  keystone_admin_url: 'http://neutron:9292'
   keystone_user_password: 'weakpassword'
   keystone_username: 'neutron'
+  core_plugin: 'ml2'

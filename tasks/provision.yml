@@ -14,7 +14,6 @@
 
 - include: hiera.yml
 
-
 - name: Generate config files
   config_template:
     src: base.conf.j2
@@ -30,42 +29,47 @@
     src: "/tmp/neutron.conf"
   register: "neutron_conf"
 
+# TODO(rwsu): plugin choice 
 - name: Create neutron-server configmaps
   ignore_errors: yes
   k8s_v1_config_map:
     host: "{{coe_host}}"
     context: "{{coe_config_context}}"
     kubeconfig: "{{coe_config_file}}"
-    name: neutron-server
+    name: neutron
     namespace: "{{namespace}}"
     state: present
     debug: yes
     labels:
-      service: neutron-server
+      service: neutron
     data:
       config.json: |
         {
-            # TODO: Specify the command to use to run the service.
             "command": "/usr/bin/neutron-server --config-file /usr/share/neutron/neutron-dist.conf --config-dir /usr/share/neutron/server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugin.ini --config-dir /etc/neutron/conf.d/common --config-dir /etc/neutron/conf.d/neutron-server",
             "config_files": [
               {
+                "source": "/var/lib/kolla/config_files/neutron.conf",
                 "dest": "/etc/neutron/neutron.conf",
                 "owner": "neutron",
-                "perm": "0644",
-                "source": "/var/lib/kolla/config_files/neutron.conf"
+                "perm": "0644"
               },
               {
+                "source": "/etc/neutron/plugins/ml2/ml2_conf.ini",
                 "dest": "/etc/neutron/plugin.ini",
                 "owner": "neutron",
-                "perm": "0644",
-                "source": "/var/lib/kolla/config_files/plugin.ini"
+                "perm": "0644"
+              }
+            ],
+            "permissions": [
+              {
+                "path": "/var/log/neutron",
+                "owner": "neutron:neutron",
+                "recurse": "true"
               }
             ]
         }
       neutron.conf: |
         {{neutron_conf['content'] | b64decode}}
-      plugin.ini: |
-        {{plugin_ini['content'] | b64decode}}
 
 - name: Create neutron database
   include_role:
@@ -102,7 +106,7 @@
     volumes:
       - name: kolla-config
         config_map:
-          name: neutron-server
+          name: neutron
     state: present
 
 - name: Create neutron-server service
@@ -149,7 +153,7 @@
     volumes:
       - name: kolla-config
         config_map:
-          name: neutron-server
+          name: neutron
     state: present
 
 
