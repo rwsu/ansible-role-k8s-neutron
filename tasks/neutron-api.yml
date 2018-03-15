@@ -62,7 +62,7 @@
     state: present
     restart_policy: OnFailure
     containers:
-      - image: tripleoupstream/centos-binary-neutron-server
+      - image: tripleomaster/centos-binary-neutron-server:current-tripleo
         name: neutron-db-sync
         env:
           - name: KOLLA_CONFIG_STRATEGY
@@ -110,7 +110,7 @@
       app: neutron-api
     containers:
       - name: neutron-api
-        image: tripleoupstream/centos-binary-neutron-server
+        image: tripleomaster/centos-binary-neutron-server:current-tripleo
         imagePullPolicy: IfNotPresent
         env:
         - name: KOLLA_CONFIG_STRATEGY

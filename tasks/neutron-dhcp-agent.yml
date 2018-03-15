@@ -46,7 +46,7 @@
       app: neutron-dhcp-agent
     containers:
       - name: neutron-dhcp-agent
-        image: tripleoupstream/centos-binary-neutron-dhcp-agent
+        image: tripleomaster/centos-binary-neutron-dhcp-agent:current-tripleo
         imagePullPolicy: IfNotPresent
         env:
         - name: KOLLA_CONFIG_STRATEGY

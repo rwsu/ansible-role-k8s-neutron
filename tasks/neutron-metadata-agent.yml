@@ -46,7 +46,7 @@
       app: neutron-metadata-agent
     containers:
       - name: neutron-metadata-agent
-        image: tripleoupstream/centos-binary-neutron-metadata-agent
+        image: tripleomaster/centos-binary-neutron-metadata-agent:current-tripleo
         imagePullPolicy: IfNotPresent
         env:
         - name: KOLLA_CONFIG_STRATEGY
