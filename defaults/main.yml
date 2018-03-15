@@ -7,7 +7,7 @@ namespace: openstack
 clouds_config: 'clouds-secret'
 
 service_name: neutron
-neutron_port: 9696
+neutron_api_port: 9696
 neutron_hostname: "{{service_name}}"
 neutron_address: "{{neutron_hostname}}"
 neutron_use_service_ip: true

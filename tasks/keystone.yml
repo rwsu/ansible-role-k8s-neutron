@@ -3,12 +3,13 @@
     name: ansible-role-k8s-tripleo
     tasks_from: bootstrap-service-endpoints
   vars:
-    service_name: 'neutron'
+#    service_name: 'neutron'
     service_type: 'network'
-    service_region: 'RegionOne'
+    service_region: '{{neutron_config.keystone_region}}'
+    service_domain: '{{neutron_config.keystone_default_domain}}'
     service_project: '{{neutron_config.keystone_authtoken.project}}'
     service_password: '{{neutron_config.keystone_authtoken.password}}'
     service_username: '{{neutron_config.keystone_authtoken.username}}'
-    service_internal_url: '{{neutron_config.keystone_internal_url}}'
-    service_public_url: '{{neutron_config.keystone_public_url}}'
-    service_admin_url: '{{neutron_config.keystone_admin_url}}'
+    service_internal_url: '{{ "https" if tls_enabled else "http"}}://{{neutron_api_address}}:{{neutron_api_port}}'
+    service_public_url: '{{ "https" if tls_enabled else "http"}}://{{neutron_api_address}}:{{neutron_api_port}}'
+    service_admin_url: '{{ "https" if tls_enabled else "http"}}://{{neutron_api_address}}:{{neutron_api_port}}'
