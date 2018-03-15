@@ -1,0 +1,63 @@
+- name: Create neutron-dhcp-agent configmap
+  ignore_errors: yes
+  k8s_v1_config_map:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: neutron-dhcp-agent
+    namespace: "{{namespace}}"
+    state: present
+    debug: yes
+    labels:
+      service: neutron
+    data:
+      config.json: |
+        {
+            "command": "/usr/bin/neutron-dhcp-agent --config-file /usr/share/neutron/neutron-dist.conf --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/dhcp_agent.ini --config-dir /etc/neutron/conf.d/common --config-dir /etc/neutron/conf.d/neutron-dhcp-agent",
+            "config_files": [
+              {
+                "source": "/var/lib/kolla/config_files/neutron.conf",
+                "dest": "/etc/neutron/neutron.conf",
+                "owner": "neutron",
+                "perm": "0644"
+              }
+            ],
+            "permissions": [
+              {
+                "path": "/var/log/neutron",
+                "owner": "neutron:neutron",
+                "recurse": "true"
+              }
+            ]
+        }
+      neutron.conf: |
+        {{neutron_conf['content'] | b64decode}}
+
+- name: Create neutron-dhcp-agent deployment
+  k8s_apps_v1beta1_deployment:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: neutron-dhcp-agent
+    namespace: "{{namespace}}"
+    replicas: 1
+    spec_revision_history_limit: 3
+    spec_template_metadata_labels:
+      app: neutron-dhcp-agent
+    containers:
+      - name: neutron-dhcp-agent
+        image: tripleoupstream/centos-binary-neutron-dhcp-agent
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KOLLA_CONFIG_STRATEGY
+          value: COPY_ALWAYS
+        - name: KOLLA_KUBERNETES
+          value: ""
+        volume_mounts:
+        - name: kolla-config
+          mountPath: /var/lib/kolla/config_files/
+    volumes:
+      - name: kolla-config
+        config_map:
+          name: neutron-dhcp-agent
+    state: present
