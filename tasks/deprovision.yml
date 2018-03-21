@@ -1,1 +1,77 @@
-# NOTE(flaper87): Add logic for de-provisioning.
+- name: Delete neutron db-sync job
+  k8s_v1_job:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{config_file}}"
+    name: neutron-db-sync
+    namespace: "{{namespace}}"
+    state: absent
+
+- name: Delete neutron-api deployment
+  k8s_v1beta1_deployment:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{config_file}}"
+    name: neutron-api
+    namespace: "{{namespace}}"
+    state: absent
+
+- name: Delete neutron-dhcp-agent deployment
+  k8s_v1beta1_deployment:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{config_file}}"
+    name: neutron-dhcp-agent
+    namespace: "{{namespace}}"
+    state: absent
+
+    - name: Delete neutron-metadata-agent deployment
+  k8s_v1beta1_deployment:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{config_file}}"
+    name: neutron-metadata-agent
+    namespace: "{{namespace}}"
+    state: absent
+
+- name: Delete neutron service
+  k8s_v1_service:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{config_file}}"
+    name: glance
+    namespace: "{{namespace}}"
+    state: absent
+
+- name: Delete neutron-api configmaps
+  ignore_errors: yes
+  k8s_v1_config_map:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: neutron-api
+    namespace: "{{namespace}}"
+    state: absent
+    debug: yes
+
+- name: Delete neutron-dhcp-agent configmaps
+  ignore_errors: yes
+  k8s_v1_config_map:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: neutron-dhcp-agent
+    namespace: "{{namespace}}"
+    state: absent
+    debug: yes
+
+- name: Delete neutron-metadata-agent configmaps
+  ignore_errors: yes
+  k8s_v1_config_map:
+    host: "{{coe_host}}"
+    context: "{{coe_config_context}}"
+    kubeconfig: "{{coe_config_file}}"
+    name: neutron-metadata-agent
+    namespace: "{{namespace}}"
+    state: absent
+    debug: yes

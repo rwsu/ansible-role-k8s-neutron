@@ -1,0 +1,68 @@
+---
+- name: Get keystone cluster ip
+  shell:
+    cmd: |
+      kubectl get service keystone --namespace {{namespace}} --template={%raw%}{{.spec.clusterIP}}{%endraw%}
+    executable: /bin/bash
+  register: keystone_ip
+
+- set_fact:
+    keystone_ip: "{{keystone_ip.stdout}}"
+
+- name: Get neutron cluster ip
+  shell:
+    cmd: |
+      kubectl get service neutron-api --namespace {{namespace}} --template={%raw%}{{.spec.clusterIP}}{%endraw%}
+    executable: /bin/bash
+  register: neutron_ip
+
+- set_fact:
+    neutron_ip: "{{neutron_ip.stdout}}"
+
+- name: Wait for neutron to become available
+  wait_for:
+    host: "{{neutron_ip}}"
+    port: "{{item}}"
+    delay: 2
+    timeout: 300
+  with_items:
+    - 9696
+
+- name: Test neutron jobs completion
+  shell:
+    cmd: |
+      set -ex
+
+      rst=$(kubectl --namespace {{namespace}} get jobs {{item}} --template={%raw%}"{{.status.succeeded}}"{%endraw%})
+      if [ "$rst" == "1" ]; then
+          exit 0
+      fi
+      exit 1
+    executable: /bin/bash
+  retries: 6
+  delay: 5
+  register: task_result
+  until: task_result.rc == 0
+  with_items:
+    - neutron-createdb
+    - neutron-db-sync
+    - neutron-keystone
+
+
+- name: Copy tempests config
+  become: true
+  template:
+    src: templates/tempest.conf
+    dest: /etc/tempest/tempest.conf
+
+- name: Run tempest
+  shell:
+    cmd: |
+      set -x
+      set -e
+      tempest init tempest
+      cd tempest
+      tempest run -r network
+    executable: /bin/bash
+  ignore_errors: true
+  register: tempest_output
